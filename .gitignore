@@ -33,3 +33,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Sensitive / local config
+nginx/.htpasswd
+nginx/ssl/
+.env
