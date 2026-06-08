@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Médico - Laboratorio Clínico</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+        }
+        .panel {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+        h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .buscador {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input[type="number"] {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .resultado-box {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .error {
+            background-color: #fdecep;
+            color: #e74c3c;
+            padding: 15px;
+            border-left: 4px solid #e74c3c;
+        }
+        .etiqueta {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            text-transform: uppercase;
+        }
+        .dato {
+            font-size: 1.1em;
+            color: #2c3e50;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="panel">
+        <h2>🔬 Portal de Resultados de Laboratorio</h2>
+        <p style="color: #7f8c8d; font-size: 0.9em;">Acceso restringido: Conectado como <strong>Medico</strong></p>
+        
+        <div class="buscador">
+            <input type="number" id="paciente_id" placeholder="Ingrese ID del Paciente (Ej: 1 o 3)" value="1">
+            <button onclick="consultarExamenes()">Buscar Examenes</button>
+        </div>
+
+        <div id="resultados">
+            </div>
+    </div>
+
+    <script>
+        async function consultarExamenes() {
+            const id = document.getElementById('paciente_id').value;
+            const contenedor = document.getElementById('resultados');
+            contenedor.innerHTML = '<p>Buscando en la base de datos segura...</p>';
+
+            // Armamos la URL apuntando a nuestro Gateway en HTTPS
+            const url = `https://localhost:8443/laboratorio/examenes/${id}`;
+
+            // Encriptamos las credenciales en Base64 para la Autenticación Básica
+            // btoa() convierte un string a Base64
+            const credenciales = btoa('medico:admin123');
+
+            try {
+                // Hacemos la petición Fetch inyectando los headers de seguridad
+                const respuesta = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Basic ${credenciales}`
+                    }
+                });
+
+                if (respuesta.status === 401) {
+                    contenedor.innerHTML = '<div class="error">Error 401: Credenciales inválidas o acceso denegado.</div>';
+                    return;
+                }
+                
+                if (!respuesta.ok) {
+                    contenedor.innerHTML = `<div class="error">No se encontraron exámenes para el paciente ID ${id}.</div>`;
+                    return;
+                }
+
+                // Parseamos el JSON que nos entrega Python desde PostgreSQL
+                const data = await respuesta.json();
+
+                if (data.examenes.length === 0) {
+                    contenedor.innerHTML = '<div class="error">El paciente no tiene exámenes registrados.</div>';
+                    return;
+                }
+
+                // Construimos el HTML con los resultados
+                let htmlResultados = '';
+                data.examenes.forEach(ex => {
+                    htmlResultados += `
+                        <div class="resultado-box">
+                            <div class="etiqueta">Tipo de Examen</div>
+                            <div class="dato">${ex.examen}</div>
+                            
+                            <div class="etiqueta">Estado Actual</div>
+                            <div class="dato" style="color: ${ex.estado === 'En Proceso' ? '#e67e22' : '#27ae60'}">
+                                ${ex.estado}
+                            </div>
+
+                            <div class="etiqueta">Fecha de Solicitud</div>
+                            <div style="color: #34495e; font-size: 0.9em;">${new Date(ex.fecha).toLocaleString()}</div>
+                        </div>
+                    `;
+                });
+
+                contenedor.innerHTML = htmlResultados;
+
+            } catch (error) {
+                contenedor.innerHTML = `<div class="error">Error de conexión: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

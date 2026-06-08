@@ -1,0 +1,127 @@
+services:
+  # --- BASE DE DATOS PRINCIPAL ---
+  db_primary:
+    image: bitnami/postgresql:latest
+    container_name: db_primary
+    restart: unless-stopped           # <-- Perfil de reinicio automático
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=master
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=${DB_PASS}
+      - POSTGRESQL_USERNAME=${DB_USER}
+      - POSTGRESQL_PASSWORD=${DB_PASS}
+      - POSTGRESQL_DATABASE=${DB_NAME}
+    ports:
+      - "5434:5432"
+    volumes:
+      - primary_data:/bitnami/postgresql
+      - ./db_init/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - red_clinica
+    healthcheck:                      # <-- Monitor de Salud
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- BASE DE DATOS RÉPLICA ---
+  db_replica:
+    image: bitnami/postgresql:latest
+    container_name: db_replica
+    restart: unless-stopped
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=${DB_PASS}
+      - POSTGRESQL_MASTER_HOST=db_primary
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+      - POSTGRESQL_PASSWORD=${DB_PASS}
+    ports:
+      - "5433:5432"
+    depends_on:
+      db_primary:
+        condition: service_healthy    # <-- Espera a que la primaria esté saludable
+    volumes:
+      - replica_data:/bitnami/postgresql
+    networks:
+      - red_clinica
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # --- APP 1: AGENDA ---
+  app_agenda:
+    build: ./app_agenda
+    container_name: app_agenda
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      db_primary:
+        condition: service_healthy    # <-- Las apps ya no fallarán al arrancar
+      db_replica:
+        condition: service_healthy
+    networks:
+      - red_clinica
+
+  # --- APP 2: TICKETS (WebSockets) ---
+  app_tickets:
+    build: ./app_tickets
+    container_name: app_tickets
+    restart: unless-stopped
+    networks:
+      - red_clinica
+
+  # --- APP 3: LABORATORIO ---
+  app_laboratorio:
+    build: ./app_laboratorio
+    container_name: app_laboratorio
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      db_replica:
+        condition: service_healthy
+    networks:
+      - red_clinica
+
+  # --- APP 4: FRONTEND ---
+  app_frontend:
+    image: nginx:1.25-alpine          # <-- Versión fijada
+    container_name: app_frontend
+    restart: unless-stopped
+    volumes:
+      - ./app_frontend:/usr/share/nginx/html:ro
+    networks:
+      - red_clinica
+
+  # --- API GATEWAY / PROXY INVERSO (NGINX) ---
+  nginx:
+    image: nginx:1.25                 # <-- Versión fijada
+    container_name: api_gateway
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+    depends_on:
+      - app_agenda
+      - app_tickets
+      - app_laboratorio
+      - app_frontend
+    networks:
+      - red_clinica
+
+volumes:
+  primary_data:
+  replica_data:
+
+networks:
+  red_clinica:
+    driver: bridge
