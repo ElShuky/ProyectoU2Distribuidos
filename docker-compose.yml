@@ -3,7 +3,7 @@ services:
   db_primary:
     image: bitnami/postgresql:latest
     container_name: db_primary
-    restart: unless-stopped           # <-- Perfil de reinicio automático
+    restart: unless-stopped           #reinicio automático
     environment:
       - POSTGRESQL_REPLICATION_MODE=master
       - POSTGRESQL_REPLICATION_USER=repl_user
@@ -18,7 +18,7 @@ services:
       - ./db_init/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - red_clinica
-    healthcheck:                      # <-- Monitor de Salud
+    healthcheck:                      # Monitor de Salud
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
@@ -40,7 +40,7 @@ services:
       - "5433:5432"
     depends_on:
       db_primary:
-        condition: service_healthy    # <-- Espera a que la primaria esté saludable
+        condition: service_healthy    #Espera a que la primaria esté saludable
     volumes:
       - replica_data:/bitnami/postgresql
     networks:
@@ -61,7 +61,7 @@ services:
       - .env
     depends_on:
       db_primary:
-        condition: service_healthy    # <-- Las apps ya no fallarán al arrancar
+        condition: service_healthy    
       db_replica:
         condition: service_healthy
     networks:
@@ -90,7 +90,7 @@ services:
 
   # --- APP 4: FRONTEND ---
   app_frontend:
-    image: nginx:1.25-alpine          # <-- Versión fijada
+    image: nginx:1.25-alpine          
     container_name: app_frontend
     restart: unless-stopped
     volumes:
@@ -100,7 +100,7 @@ services:
 
   # --- API GATEWAY / PROXY INVERSO (NGINX) ---
   nginx:
-    image: nginx:1.25                 # <-- Versión fijada
+    image: nginx:1.25                 
     container_name: api_gateway
     restart: unless-stopped
     ports:

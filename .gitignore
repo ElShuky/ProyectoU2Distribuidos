@@ -38,3 +38,6 @@ Thumbs.db
 nginx/.htpasswd
 nginx/ssl/
 .env
+
+latex.txt
+archivos_para_explicar.txt

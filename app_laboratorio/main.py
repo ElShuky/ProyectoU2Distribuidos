@@ -17,7 +17,7 @@ def get_connection(host_type="REPLICA"):
 @app.get("/examenes/{paciente_id}")
 def ver_examenes(paciente_id: int):
     conn = None
-    origen = "db_replica" # Por defecto, intentamos la réplica
+    origen = "db_replica" 
     
     try:
         # INTENTO 1: Conectar a la Réplica

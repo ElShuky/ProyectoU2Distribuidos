@@ -59,7 +59,7 @@
             border-radius: 4px;
         }
         .error {
-            background-color: #fdecep;
+            background-color: #fce4e4;
             color: #e74c3c;
             padding: 15px;
             border-left: 4px solid #e74c3c;
@@ -80,11 +80,11 @@
 <body>
 
     <div class="panel">
-        <h2>🔬 Portal de Resultados de Laboratorio</h2>
+        <h2> Portal de Resultados de Laboratorio</h2>
         <p style="color: #7f8c8d; font-size: 0.9em;">Acceso restringido: Conectado como <strong>Medico</strong></p>
         
         <div class="buscador">
-            <input type="number" id="paciente_id" placeholder="Ingrese ID del Paciente (Ej: 1 o 3)" value="1">
+            <input type="number" id="paciente_id" placeholder="Ingrese ID del Paciente " value="1">
             <button onclick="consultarExamenes()">Buscar Examenes</button>
         </div>
 
@@ -101,21 +101,21 @@
             // Armamos la URL apuntando a nuestro Gateway en HTTPS
             const url = `https://localhost:8443/laboratorio/examenes/${id}`;
 
-            // Encriptamos las credenciales en Base64 para la Autenticación Básica
-            // btoa() convierte un string a Base64
-            const credenciales = btoa('medico:admin123');
+            // No enviar credenciales desde el cliente: quitadas para forzar autenticación
 
             try {
-                // Hacemos la petición Fetch inyectando los headers de seguridad
-                const respuesta = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Basic ${credenciales}`
-                    }
-                });
+                //  petición Fetch sin credenciales; si responde 401
+                // ofreceremos al usuario iniciar sesión en la ruta protegida.
+                const respuesta = await fetch(url, { method: 'GET' });
 
                 if (respuesta.status === 401) {
-                    contenedor.innerHTML = '<div class="error">Error 401: Credenciales inválidas o acceso denegado.</div>';
+                    contenedor.innerHTML = `
+                        <div class="error">
+                            Error 401: Credenciales inválidas o acceso denegado.
+                            <div style="margin-top:8px">
+                                <button onclick="window.location.href='https://localhost:8443/laboratorio/'">Iniciar sesión</button>
+                            </div>
+                        </div>`;
                     return;
                 }
                 
@@ -132,7 +132,7 @@
                     return;
                 }
 
-                // Construimos el HTML con los resultados
+                //  HTML con los resultados
                 let htmlResultados = '';
                 data.examenes.forEach(ex => {
                     htmlResultados += `

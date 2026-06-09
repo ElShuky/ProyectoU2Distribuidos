@@ -1,4 +1,4 @@
-import os # <-- Añadir esta importación al principio del archivo
+import os 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import psycopg2
@@ -68,7 +68,7 @@ def crear_cita(cita: Cita):
         cur.execute(query, (cita.paciente_id, cita.medico, cita.box, cita.fecha_cita))
         nueva_cita_id = cur.fetchone()[0]
         
-        conn.commit() # Guardamos los cambios
+        conn.commit() 
         cur.close()
         conn.close()
         
